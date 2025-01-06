@@ -1,0 +1,8 @@
+out
+target
+.env
+.env.local
+.env.example
+.DS_Store
+/node_modules
+/dist
