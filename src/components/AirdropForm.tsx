@@ -5,6 +5,7 @@ import TokenSelector from "./TokenSelector";
 import { useWallet } from "@fuels/react";
 import { Airdrop } from "../sway-api/index.ts";
 import { Address, bn } from "fuels";
+import toast from "react-hot-toast";
 
 interface Token {
   assetId: string;
@@ -26,6 +27,33 @@ interface FailedEntry extends AirdropEntry {
 
 const contractId =
   "0xcee11ba55ecf698c6a86c4444f515c5fe499049a0084208fd093186a7ac6e89f";
+
+// Add custom toast styles
+const toastStyles = {
+  success: {
+    style: {
+      background: 'rgb(0, 201, 167)', // fuel-green
+      color: 'black',
+      borderRadius: '6px',
+    },
+    iconTheme: {
+      primary: 'black',
+      secondary: 'rgb(0, 201, 167)',
+    },
+  },
+  error: {
+    style: {
+      background: 'rgb(127, 29, 29)', // dark red background
+      color: 'rgb(254, 202, 202)', // light red text
+      borderRadius: '6px',
+    },
+    iconTheme: {
+      primary: 'rgb(254, 202, 202)', // light red icon
+      secondary: 'rgb(127, 29, 29)', // dark red background
+    },
+  },
+};
+
 function AirdropForm() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [addresses, setAddresses] = useState<string>("");
@@ -88,6 +116,8 @@ function AirdropForm() {
 
     setIsProcessing(true);
     setFailedEntries([]); // Reset failed entries at start
+    let successfulBatches = 0; // Add counter for successful batches
+    
     try {
       const entries = parseAddresses();
       
@@ -152,10 +182,22 @@ function AirdropForm() {
             const tx = await wallet.sendTransaction(request);
             await tx.wait();
             console.log(`Batch ${batchIndex + 1} transaction:`, tx);
+            
+            // Add success toast for each batch
+            successfulBatches++;
+            toast.success(`Batch ${batchIndex + 1}/${totalBatches} completed successfully!`, {
+              duration: 3000,
+              ...toastStyles.success,
+            });
           }
         } catch (error) {
           console.error(`Batch ${batchIndex + 1} failed:`, error);
-          // Add failed entries to the failedEntries array
+          // Add error toast for failed batches
+          toast.error(`Batch ${batchIndex + 1}/${totalBatches} failed. Check failed entries for details.`, {
+            duration: 5000,
+            ...toastStyles.error,
+          });
+          
           const failedBatchEntries = batchEntries.map(entry => ({
             ...entry,
             batchIndex: batchIndex + 1
@@ -165,8 +207,21 @@ function AirdropForm() {
 
         setBatchProgress({ current: batchIndex + 1, total: totalBatches });
       }
+
+      // Show final summary toast
+      if (successfulBatches === totalBatches) {
+        toast.success('🎉 Airdrop completed successfully!', {
+          duration: 5000,
+          ...toastStyles.success,
+        });
+      }
+      
     } catch (error) {
       console.error("Airdrop failed:", error);
+      toast.error('Airdrop process failed. Please try again.', {
+        duration: 5000,
+        ...toastStyles.error,
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -200,21 +255,22 @@ function AirdropForm() {
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
             Fuel Shot
           </div>
-          <span className="text-sm text-gray-500 dark:text-gray-400">Airdrop tokens seamlessly to your community</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Airdrop tokens seamlessly to your community
+          </span>
         </div>
         <WalletConnect />
       </div>
 
-      {currentStep === 'token' && wallet ? (
+      {currentStep === "token" && wallet ? (
         <TokenSelector
           selectedToken={selectedToken}
           onTokenSelect={handleTokenSelect}
         />
-      ) : (
-        wallet ? (
-          <div className="space-y-6">
-            <div className="flex flex-col space-y-4">
-              <button
+      ) : wallet ? (
+        <div className="space-y-6">
+          <div className="flex flex-col space-y-4">
+            <button
               onClick={handleBackToTokenSelection}
               className="inline-flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
             >
@@ -225,14 +281,15 @@ function AirdropForm() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                 Selected Token: {selectedToken?.symbol}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Available balance: {selectedToken?.balance} {selectedToken?.symbol}
+              <p className="text-sm text-gray-500 dark:text-fuel-green">
+                Available balance: {selectedToken?.balance}{" "}
+                {selectedToken?.symbol}
               </p>
-              </div>
             </div>
+          </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex items-center justify-between">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                   Recipients
@@ -242,12 +299,13 @@ function AirdropForm() {
                 <button
                   type="button"
                   onClick={handleDownloadSample}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10"
                 >
                   <Download className="w-5 h-5 mr-2" />
                   Download Sample
                 </button>
-                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10">
+                  {" "}
                   <FileSpreadsheet className="w-5 h-5 mr-2" />
                   Upload CSV
                   <input
@@ -263,7 +321,7 @@ function AirdropForm() {
             <div>
               <textarea
                 rows={10}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-fuel-dark-600 rounded-md focus:ring-fuel-green focus:border-fuel-green font-mono text-sm bg-white dark:bg-fuel-dark-700 text-gray-900 dark:text-white outline-none"
                 placeholder="address,amount&#10;address,amount&#10;...&#10;&#10;Example:&#10;0x1234...5678,100&#10;0x8765...4321,50"
                 value={addresses}
                 onChange={(e) => handleTextChange(e.target.value)}
@@ -273,11 +331,14 @@ function AirdropForm() {
             <button
               type="submit"
               disabled={isProcessing}
-              className="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"
+              className="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent dark:border-fuel-green hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isProcessing ? (
                 <>
-                  Processing... {batchProgress ? `(Batch ${batchProgress.current}/${batchProgress.total})` : ''}
+                  Processing...{" "}
+                  {batchProgress
+                    ? `(Batch ${batchProgress.current}/${batchProgress.total})`
+                    : ""}
                 </>
               ) : (
                 <>
@@ -310,11 +371,12 @@ function AirdropForm() {
                     )}
                   </button>
                 </div>
-                
+
                 {showFailedEntries && (
                   <div className="mt-4">
                     <p className="text-sm text-red-700 dark:text-red-300 mb-2">
-                      {failedEntries.length} transactions failed. Click below to copy the addresses and amounts to try again.
+                      {failedEntries.length} transactions failed. Click below to
+                      copy the addresses and amounts to try again.
                     </p>
                     <button
                       type="button"
@@ -328,7 +390,9 @@ function AirdropForm() {
                         readOnly
                         rows={5}
                         className="w-full px-3 py-2 text-xs font-mono border border-red-200 dark:border-red-800 rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
-                        value={failedEntries.map(entry => `${entry.address},${entry.amount}`).join('\n')}
+                        value={failedEntries
+                          .map((entry) => `${entry.address},${entry.amount}`)
+                          .join("\n")}
                       />
                     </div>
                   </div>
@@ -337,23 +401,23 @@ function AirdropForm() {
             </div>
           )}
         </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center p-8 space-y-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-            <div className="text-center space-y-2">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Connect Your Wallet
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                To start, please connect your Fuel wallet!
-              </p>
-            </div>
-            <WalletConnect />
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <AlertCircle className="w-4 h-4" />
-              <span>Make sure you have the Fuel Wallet extension installed</span>
-            </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-8 space-y-6 border-2 border-dashed border-gray-300 dark:border-fuel-dark-600 rounded-lg bg-gray-50 dark:bg-fuel-dark-800/90">
+          <div className="text-center space-y-2">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Connect Your Wallet
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              To start, please connect your Fuel wallet!
+            </p>
           </div>
-        ))}
+          <WalletConnect />
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <AlertCircle className="w-4 h-4" />
+            <span>Make sure you have the Fuel Wallet extension installed</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

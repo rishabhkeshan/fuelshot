@@ -150,15 +150,15 @@ function TokenSelector({ selectedToken, onTokenSelect }: TokenSelectorProps) {
           <button
             key={token.assetId}
             onClick={() => onTokenSelect(token)}
-            className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 ${
+            className={`flex items-center justify-between p-4 border rounded-lg ${
               selectedToken?.assetId === token.assetId
-                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/50"
-                : "border-gray-200 dark:border-gray-700"
-            } dark:text-white w-full`}
+                ? "border-fuel-green bg-fuel-green/5 dark:bg-fuel-green/10"
+                : "border-gray-200 dark:border-fuel-dark-600"
+            } hover:border-fuel-green dark:text-white`}
           >
             <div className="flex items-center w-full">
               <div className="w-10">
-                <Coins className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <Coins className="w-5 h-5 text-gray-400 dark:text-fuel-green" />
               </div>
 
               <div className="grid grid-cols-12 gap-4 w-full items-center">
@@ -207,7 +207,7 @@ function TokenSelector({ selectedToken, onTokenSelect }: TokenSelectorProps) {
 
       <button
         onClick={() => setShowUnknownAssets(!showUnknownAssets)}
-        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+        className="cursor-pointer mt-4 inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10"
       >
         {showUnknownAssets ? "Hide Unknown Assets" : "Show Unknown Assets"}
       </button>
@@ -222,15 +222,15 @@ function TokenSelector({ selectedToken, onTokenSelect }: TokenSelectorProps) {
               <button
                 key={token.assetId}
                 onClick={() => onTokenSelect(token)}
-                className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                className={`flex items-center justify-between p-4 border rounded-lg ${
                   selectedToken?.assetId === token.assetId
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/50"
-                    : "border-gray-200 dark:border-gray-700"
-                } dark:text-white w-full`}
+                    ? "border-fuel-green bg-fuel-green/5 dark:bg-fuel-green/10"
+                    : "border-gray-200 dark:border-fuel-dark-600"
+                } hover:border-fuel-green dark:text-white`}
               >
                 <div className="flex items-center w-full">
                   <div className="w-10">
-                    <Coins className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Coins className="w-5 h-5 text-gray-400 dark:text-fuel-green" />
                   </div>
 
                   <div className="grid grid-cols-12 gap-4 w-full items-center">
@@ -276,7 +276,9 @@ function TokenSelector({ selectedToken, onTokenSelect }: TokenSelectorProps) {
               </button>
             ))
           ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No unknown assets found.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No unknown assets found.
+            </p>
           )}
         </div>
       )}
