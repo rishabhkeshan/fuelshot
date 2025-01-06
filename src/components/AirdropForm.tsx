@@ -205,15 +205,16 @@ function AirdropForm() {
         <WalletConnect />
       </div>
 
-      {currentStep === 'token' ? (
+      {currentStep === 'token' && wallet ? (
         <TokenSelector
           selectedToken={selectedToken}
           onTokenSelect={handleTokenSelect}
         />
       ) : (
-        <div className="space-y-6">
-          <div className="flex flex-col space-y-4">
-            <button
+        wallet ? (
+          <div className="space-y-6">
+            <div className="flex flex-col space-y-4">
+              <button
               onClick={handleBackToTokenSelection}
               className="inline-flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
             >
@@ -227,11 +228,11 @@ function AirdropForm() {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Available balance: {selectedToken?.balance} {selectedToken?.symbol}
               </p>
+              </div>
             </div>
-          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex items-center justify-between">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                   Recipients
@@ -263,7 +264,7 @@ function AirdropForm() {
               <textarea
                 rows={10}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="address,amount&#10;address,amount&#10;...&#10;&#10;Example:&#10;fuel1234...5678,100&#10;fuel8765...4321,50"
+                placeholder="address,amount&#10;address,amount&#10;...&#10;&#10;Example:&#10;0x1234...5678,100&#10;0x8765...4321,50"
                 value={addresses}
                 onChange={(e) => handleTextChange(e.target.value)}
               />
@@ -336,7 +337,23 @@ function AirdropForm() {
             </div>
           )}
         </div>
-      )}
+        ) : (
+          <div className="flex flex-col items-center justify-center p-8 space-y-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Connect Your Wallet
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                To start, please connect your Fuel wallet!
+              </p>
+            </div>
+            <WalletConnect />
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <AlertCircle className="w-4 h-4" />
+              <span>Make sure you have the Fuel Wallet extension installed</span>
+            </div>
+          </div>
+        ))}
     </div>
   );
 }

@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Wallet } from 'lucide-react';
+import { Wallet, LogOut } from 'lucide-react';
 import {
   useBalance,
   useConnectUI,
+  useDisconnect,
   useIsConnected,
   useWallet,
 } from "@fuels/react";
+
 function WalletConnect() {
-  const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState('');
-  const { connect, isConnecting } = useConnectUI();
+  const { connect, isConnecting, isConnected } = useConnectUI();
   const { wallet } = useWallet();
+  const { disconnect } = useDisconnect();
 
   useEffect(() => {
     if (wallet) {
-      setIsConnected(true);
       setAddress(wallet.address.toB256());
     }
   }, [wallet]);
+
   return (
     <div className="mb-6">
       {!isConnected ? (
@@ -31,9 +33,18 @@ function WalletConnect() {
           {isConnecting ? "Connecting" : "Connect"}
         </button>
       ) : (
-        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-          <Wallet className="w-4 h-4" />
-          <span>{address.substring(0, 6)}...{address.substring(address.length - 4)}</span>
+        <div className="flex items-center space-x-2">
+          <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center">
+            <Wallet className="w-4 h-4 mr-2" />
+            <span>{address.substring(0, 6)}...{address.substring(address.length - 4)}</span>
+          </div>
+          <button
+            onClick={() => disconnect()}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            title="Disconnect wallet"
+          >
+            <LogOut className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+          </button>
         </div>
       )}
     </div>

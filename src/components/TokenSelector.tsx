@@ -276,7 +276,7 @@ function TokenSelector({ selectedToken, onTokenSelect }: TokenSelectorProps) {
               </button>
             ))
           ) : (
-            <p>No unknown assets found.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No unknown assets found.</p>
           )}
         </div>
       )}
