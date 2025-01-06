@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export function useTheme() {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
+export function useTheme({ isDark, setIsDark }: { isDark: boolean; setIsDark: (isDark: boolean) => void }) {
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -19,6 +15,6 @@ export function useTheme() {
 
   return {
     isDark,
-    toggle: () => setIsDark(prev => !prev)
+    toggle: () => setIsDark(!isDark)
   };
 }
