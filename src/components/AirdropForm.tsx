@@ -54,6 +54,12 @@ const toastStyles = {
   },
 };
 
+const calculateTotalAmount = (entries: AirdropEntry[]): string => {
+  return entries
+    .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+    .toString();
+};
+
 function AirdropForm() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [addresses, setAddresses] = useState<string>("");
@@ -70,6 +76,8 @@ function AirdropForm() {
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [failedEntries, setFailedEntries] = useState<FailedEntry[]>([]);
   const [showFailedEntries, setShowFailedEntries] = useState(false);
+  const [recipientCount, setRecipientCount] = useState(0);
+  const [totalAmount, setTotalAmount] = useState("0");
 
   const handleTokenSelect = (token: Token) => {
     setSelectedToken(token);
@@ -82,6 +90,18 @@ function AirdropForm() {
 
   const handleTextChange = (value: string) => {
     setAddresses(value);
+    const entries = value
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((line) => {
+        const [address, amount] = line
+          .split(/[,\s]+/)
+          .map((item) => item.trim());
+        return { address, amount };
+      });
+    
+    setRecipientCount(entries.length);
+    setTotalAmount(calculateTotalAmount(entries));
   };
 
   const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,8 +112,22 @@ function AirdropForm() {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       setAddresses(text);
+      // Calculate totals for the uploaded CSV
+      const entries = text
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => {
+          const [address, amount] = line
+            .split(/[,\s]+/)
+            .map((item) => item.trim());
+          return { address, amount };
+        });
+      setRecipientCount(entries.length);
+      setTotalAmount(calculateTotalAmount(entries));
     };
     reader.readAsText(file);
+    // Reset the file input value after processing
+    event.target.value = '';
   };
 
   const parseAddresses = (): AirdropEntry[] => {
@@ -290,10 +324,18 @@ function AirdropForm() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="space-y-1">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Recipients
+                  Recipients <span className="text-fuel-green">({recipientCount})</span>
                 </h3>
+                {recipientCount > 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Total amount to be airdropped:{" "}
+                    <span className="text-fuel-green font-medium">
+                      {totalAmount} {selectedToken?.symbol}
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 <button
@@ -305,7 +347,6 @@ function AirdropForm() {
                   Download Sample
                 </button>
                 <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10">
-                  {" "}
                   <FileSpreadsheet className="w-5 h-5 mr-2" />
                   Upload CSV
                   <input
