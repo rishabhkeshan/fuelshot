@@ -4,7 +4,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { Github } from 'lucide-react';
 import FuelLogo from "./assets/fuel_logo.svg";
 import FuelLogoLight from "./assets/fuel_logo_light.svg";
-import { useTheme } from './hooks/useTheme';
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
     const [isDark, setIsDark] = useState(() => {
@@ -48,6 +48,7 @@ function App() {
           <AirdropForm />
         </div>
       </div>
+      <Analytics />
     </div>
   );
 }
