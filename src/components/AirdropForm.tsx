@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Upload, FileSpreadsheet, ArrowLeft, Download, X, AlertCircle } from "lucide-react";
 import WalletConnect from "./WalletConnect";
 import TokenSelector from "./TokenSelector";
@@ -6,15 +6,11 @@ import { useWallet } from "@fuels/react";
 import { Airdrop } from "../sway-api/index.ts";
 import { Address, bn } from "fuels";
 import toast from "react-hot-toast";
+import AirdropNFTForm from './AirdropNFTForm';
+import { Token } from '../types/token';
+// import { Toggle } from "@radix-ui/react-toggle";
 
-interface Token {
-  assetId: string;
-  symbol: string;
-  balance: string;
-  name: string;
-  isNFT: boolean;
-  decimals: number;
-}
+
 
 interface AirdropEntry {
   address: string;
@@ -24,6 +20,15 @@ interface AirdropEntry {
 interface FailedEntry extends AirdropEntry {
   batchIndex: number;
 }
+
+// interface TokenSelectorProps {
+//   selectedToken: Token | null;
+//   onTokenSelect: (token: Token) => void;
+//   tokens: Token[];
+//   unknownTokens: Token[];
+//   showUnknownAssets: boolean;
+//   setShowUnknownAssets: (show: boolean) => void;
+// }
 
 const contractId =
   "0xcee11ba55ecf698c6a86c4444f515c5fe499049a0084208fd093186a7ac6e89f";
@@ -66,6 +71,7 @@ function AirdropForm() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'token' | 'recipients'>('token');
   const { wallet } = useWallet();
+  const [airdropType, setAirdropType] = useState<'tokens' | 'nfts'>('tokens');
   const contract = useMemo(() => {
     if (wallet) {
       const contract = new Airdrop(contractId, wallet);
@@ -78,6 +84,80 @@ function AirdropForm() {
   const [showFailedEntries, setShowFailedEntries] = useState(false);
   const [recipientCount, setRecipientCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState("0");
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [unknownTokens, setUnknownTokens] = useState<Token[]>([]);
+  const [showUnknownAssets, setShowUnknownAssets] = useState(false);
+  const [nfts, setNFTs] = useState<Token[]>([]);
+  const [selectedNFT, setSelectedNFT] = useState<Token | null>(null);
+  const [fetchingAssets, setFetchingAssets] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setFetchingAssets(true);
+
+    const fetchTokens = async () => {
+      if (!wallet) return;
+
+      try {
+        const balances = await wallet.getBalances();
+        const newTokens: Token[] = [];
+        const newUnknownTokens: Token[] = [];
+        const newNFTs: Token[] = [];
+
+        await Promise.all(
+          balances.balances.map(async (balance) => {
+            const apiUrl =
+              wallet.provider.getChainId() === 0
+                ? `https://explorer-indexer-testnet.fuel.network/assets/${balance.assetId}`
+                : `https://mainnet-explorer.fuel.network/assets/${balance.assetId}`;
+
+            const response = await fetch(apiUrl);
+            const metadata = await response.json();
+
+            const tokenData = {
+              assetId: balance.assetId,
+              symbol: metadata.symbol || "Unknown",
+              name: metadata.name || "Unknown Asset",
+              isNFT: metadata.isNFT || false,
+              balance: metadata.decimals 
+                ? balance.amount.format({units: metadata.decimals}).toString()
+                : balance.amount.toString(),
+              decimals: metadata.decimals || 0,
+            };
+
+            if (tokenData.isNFT) {
+              newNFTs.push(tokenData);
+            } else if (!metadata.name) {
+              newUnknownTokens.push(tokenData);
+            } else {
+              newTokens.push(tokenData);
+            }
+          })
+        );
+
+        if (mounted) {
+          setTokens(newTokens);
+          setUnknownTokens(newUnknownTokens);
+          setNFTs(newNFTs);
+        }
+      } catch (error) {
+        console.error('Error fetching tokens:', error);
+      } finally {
+        if (mounted) {
+          setFetchingAssets(false);
+        }
+      }
+    };
+
+    setTokens([]);
+    setUnknownTokens([]);
+    setNFTs([]);
+    fetchTokens();
+
+    return () => {
+      mounted = false;
+    };
+  }, [wallet]);
 
   const handleTokenSelect = (token: Token) => {
     setSelectedToken(token);
@@ -282,6 +362,11 @@ function AirdropForm() {
     navigator.clipboard.writeText(text);
   };
 
+  const handleNFTSelect = (nft: Token) => {
+    setSelectedNFT(nft);
+    // Add any additional logic needed when an NFT is selected
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -295,154 +380,37 @@ function AirdropForm() {
         </div>
         <WalletConnect />
       </div>
-
-      {currentStep === "token" && wallet ? (
-        <TokenSelector
-          selectedToken={selectedToken}
-          onTokenSelect={handleTokenSelect}
-        />
-      ) : wallet ? (
-        <div className="space-y-6">
-          <div className="flex flex-col space-y-4">
-            <button
-              onClick={handleBackToTokenSelection}
-              className="inline-flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <ArrowLeft className="w-5 h-5 mr-1" />
-              Back to Token Selection
-            </button>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Selected Token: {selectedToken?.symbol}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-fuel-green">
-                Available balance: {selectedToken?.balance}{" "}
-                {selectedToken?.symbol}
-              </p>
+      
+      {wallet && (
+        <div className="flex justify-start">
+          <div className="inline-flex p-1 bg-fuel-dark-700 rounded-lg">
+            <div className="grid grid-cols-2 w-[300px]">
+              <button
+                onClick={() => setAirdropType("tokens")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  airdropType === "tokens"
+                    ? "bg-fuel-green text-black"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Airdrop Tokens
+              </button>
+              <button
+                onClick={() => setAirdropType("nfts")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  airdropType === "nfts"
+                    ? "bg-fuel-green text-black"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Airdrop NFTs
+              </button>
             </div>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Recipients <span className="text-fuel-green">({recipientCount})</span>
-                </h3>
-                {recipientCount > 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Total amount to be airdropped:{" "}
-                    <span className="text-fuel-green font-medium">
-                      {totalAmount} {selectedToken?.symbol}
-                    </span>
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleDownloadSample}
-                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10"
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  Download Sample
-                </button>
-                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10">
-                  <FileSpreadsheet className="w-5 h-5 mr-2" />
-                  Upload CSV
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <textarea
-                rows={10}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-fuel-dark-600 rounded-md focus:ring-fuel-green focus:border-fuel-green font-mono text-sm bg-white dark:bg-fuel-dark-700 text-gray-900 dark:text-white outline-none"
-                placeholder="address,amount&#10;address,amount&#10;...&#10;&#10;Example:&#10;0x1234...5678,100&#10;0x8765...4321,50"
-                value={addresses}
-                onChange={(e) => handleTextChange(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent dark:border-fuel-green hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isProcessing ? (
-                <>
-                  Processing...{" "}
-                  {batchProgress
-                    ? `(Batch ${batchProgress.current}/${batchProgress.total})`
-                    : ""}
-                </>
-              ) : (
-                <>
-                  <Upload className="w-5 h-5 mr-2" />
-                  Start Airdrop
-                </>
-              )}
-            </button>
-          </form>
-
-          {failedEntries.length > 0 && (
-            <div className="mt-4">
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
-                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                      Failed Transactions
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowFailedEntries(!showFailedEntries)}
-                    className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    {showFailedEntries ? (
-                      <X className="h-5 w-5" />
-                    ) : (
-                      <span className="text-sm">Show Details</span>
-                    )}
-                  </button>
-                </div>
-
-                {showFailedEntries && (
-                  <div className="mt-4">
-                    <p className="text-sm text-red-700 dark:text-red-300 mb-2">
-                      {failedEntries.length} transactions failed. Click below to
-                      copy the addresses and amounts to try again.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={copyFailedEntriesToClipboard}
-                      className="inline-flex items-center px-3 py-1.5 border border-red-300 dark:border-red-700 shadow-sm text-xs font-medium rounded text-red-700 dark:text-red-200 bg-white dark:bg-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/50"
-                    >
-                      Copy Failed Entries
-                    </button>
-                    <div className="mt-2">
-                      <textarea
-                        readOnly
-                        rows={5}
-                        className="w-full px-3 py-2 text-xs font-mono border border-red-200 dark:border-red-800 rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
-                        value={failedEntries
-                          .map((entry) => `${entry.address},${entry.amount}`)
-                          .join("\n")}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
-      ) : (
+      )}
+
+      {!wallet ? (
         <div className="flex flex-col items-center justify-center p-8 space-y-6 border-2 border-dashed border-gray-300 dark:border-fuel-dark-600 rounded-lg bg-gray-50 dark:bg-fuel-dark-800/90">
           <div className="text-center space-y-2">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -458,6 +426,168 @@ function AirdropForm() {
             <span>Make sure you have the Fuel Wallet extension installed</span>
           </div>
         </div>
+      ) : airdropType === "nfts" ? (
+        <AirdropNFTForm
+          nfts={nfts}
+          selectedNFT={selectedNFT}
+          onNFTSelect={handleNFTSelect}
+          fetchingAssets={fetchingAssets}
+        />
+      ) : (
+        <>
+          {currentStep === "token" ? (
+            <TokenSelector
+              selectedToken={selectedToken}
+              onTokenSelect={handleTokenSelect}
+              tokens={tokens}
+              unknownTokens={unknownTokens}
+              showUnknownAssets={showUnknownAssets}
+              setShowUnknownAssets={setShowUnknownAssets}
+            />
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col space-y-4">
+                <button
+                  onClick={handleBackToTokenSelection}
+                  className="inline-flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-1" />
+                  Back to Token Selection
+                </button>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Selected Token: {selectedToken?.symbol}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-fuel-green">
+                    Available balance: {selectedToken?.balance}{" "}
+                    {selectedToken?.symbol}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      Recipients{" "}
+                      <span className="text-fuel-green">({recipientCount})</span>
+                    </h3>
+                    {recipientCount > 0 && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Total amount to be airdropped:{" "}
+                        <span className="text-fuel-green font-medium">
+                          {totalAmount} {selectedToken?.symbol}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadSample}
+                      className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10"
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      Download Sample
+                    </button>
+                    <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-fuel-green rounded-md text-sm font-medium text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10">
+                      <FileSpreadsheet className="w-5 h-5 mr-2" />
+                      Upload CSV
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <textarea
+                    rows={10}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-fuel-dark-600 rounded-md focus:ring-fuel-green focus:border-fuel-green font-mono text-sm bg-white dark:bg-fuel-dark-700 text-gray-900 dark:text-white outline-none"
+                    placeholder="address,amount&#10;address,amount&#10;...&#10;&#10;Example:&#10;0x1234...5678,100&#10;0x8765...4321,50"
+                    value={addresses}
+                    onChange={(e) => handleTextChange(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-black dark:text-fuel-green bg-fuel-green dark:bg-transparent dark:border-fuel-green hover:bg-fuel-green/90 dark:hover:bg-fuel-green/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? (
+                    <>
+                      Processing...{" "}
+                      {batchProgress
+                        ? `(Batch ${batchProgress.current}/${batchProgress.total})`
+                        : ""}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 mr-2" />
+                      Start Airdrop
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {failedEntries.length > 0 && (
+                <div className="mt-4">
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                          Failed Transactions
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowFailedEntries(!showFailedEntries)}
+                        className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        {showFailedEntries ? (
+                          <X className="h-5 w-5" />
+                        ) : (
+                          <span className="text-sm">Show Details</span>
+                        )}
+                      </button>
+                    </div>
+
+                    {showFailedEntries && (
+                      <div className="mt-4">
+                        <p className="text-sm text-red-700 dark:text-red-300 mb-2">
+                          {failedEntries.length} transactions failed. Click below to
+                          copy the addresses and amounts to try again.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={copyFailedEntriesToClipboard}
+                          className="inline-flex items-center px-3 py-1.5 border border-red-300 dark:border-red-700 shadow-sm text-xs font-medium rounded text-red-700 dark:text-red-200 bg-white dark:bg-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/50"
+                        >
+                          Copy Failed Entries
+                        </button>
+                        <div className="mt-2">
+                          <textarea
+                            readOnly
+                            rows={5}
+                            className="w-full px-3 py-2 text-xs font-mono border border-red-200 dark:border-red-800 rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                            value={failedEntries
+                              .map((entry) => `${entry.address},${entry.amount}`)
+                              .join("\n")}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

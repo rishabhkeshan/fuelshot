@@ -12,6 +12,7 @@
   "dependencies": {
     "@fuels/connectors": "^0.36.1",
     "@fuels/react": "^0.36.1",
+    "@radix-ui/react-toggle": "^1.1.1",
     "@tanstack/react-query": "^5.62.15",
     "@vercel/analytics": "^1.4.1",
     "fuels": "^0.97.2",
@@ -31,6 +32,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "postcss": "^8.4.35",
+    "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
