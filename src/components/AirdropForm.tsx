@@ -383,14 +383,14 @@ function AirdropForm() {
       
       {wallet && (
         <div className="flex justify-start">
-          <div className="inline-flex p-1 bg-fuel-dark-700 rounded-lg">
+          <div className="inline-flex p-1 bg-gray-100 dark:bg-fuel-dark-700 rounded-lg">
             <div className="grid grid-cols-2 w-[300px]">
               <button
                 onClick={() => setAirdropType("tokens")}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   airdropType === "tokens"
                     ? "bg-fuel-green text-black"
-                    : "text-gray-400 hover:text-white"
+                    : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 Airdrop Tokens
@@ -400,7 +400,7 @@ function AirdropForm() {
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   airdropType === "nfts"
                     ? "bg-fuel-green text-black"
-                    : "text-gray-400 hover:text-white"
+                    : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 Airdrop NFTs
